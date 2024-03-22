@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, QMessageBox, QGridLayout,QRadioButton, QSizePolicy
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, QMessageBox, QGridLayout,QRadioButton
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt
 from PySide6.QtCore import QPoint, Qt, QCoreApplication
 
@@ -29,7 +29,7 @@ class CarCountingApp(QMainWindow):
         layout.addWidget(self.video_label,0,0,4,1)
         
         
-        self.select_mode = QLabel("Select mode line/rectangle")
+        self.select_mode = QLabel("Select mode rectangle/line")
 
         self.select_mode.setAlignment(Qt.AlignCenter)  # Align text to the center
         layout.addWidget(self.select_mode,0,1)
@@ -72,19 +72,26 @@ class CarCountingApp(QMainWindow):
         self.start_counting_button.clicked.connect(self.start_car_counting)
         layout.addWidget(self.start_counting_button,6,0,1,2)
         
+    # def eventFilter(self, obj, event):
+    #     if obj == self.video_label and event.type() == QEvent.MouseButtonPress:
+    #         if self.b1.isChecked():
+    #             self.draw_rectangle(event)
+    #             return True
+    #         elif self.b2.isChecked():
+    #             self.draw_line(event)
+    #             return True
+    #     return super().eventFilter(obj, event)
+      
     def btnstate(self,b):
         
-        if b.text() == "rectangle":
-            if b.isChecked() == True:
-                print(b.text()+ " is selected")
-            else:
-                print(b.text()+ " is selected")
+        if b.text() == "rectangle" and b.isChecked():
+            print(b.text() + " is selected")
+            self.draw_rectangle
                     
-        if b.text() == "line":
-            if b.isChecked() == True:
-                print(b.text()+ " is selected")
-            else:
-                print(b.text()+ " is selected")
+        if b.text() == "line" and b.isChecked():
+            print(b.text() + " is selected")
+            self.draw_line
+
                 
     def select_video(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Video File", "", "Video Files (*.mp4 *.avi)")
@@ -113,10 +120,13 @@ class CarCountingApp(QMainWindow):
         self.rect_points_toCounting = []
 
         # Handle mouse clicks on the video label
-        self.video_label.mousePressEvent = self.on_mouse_click
+        if self.b1.isChecked():
+            self.video_label.mousePressEvent = self.draw_rectangle
+        elif self.b2.isChecked():
+            self.video_label.mousePressEvent = self.draw_line
 
 
-    def on_mouse_click(self, event):
+    def draw_rectangle(self, event):
         # Get the position of the click relative to the video label
         position = event.position()
         x = int(position.x())
@@ -162,13 +172,58 @@ class CarCountingApp(QMainWindow):
                 # Reset the mousePressEvent to enable clicking again
                 self.video_label.mousePressEvent = None
                 
-                
-                
+  
         
         painter.end()  # End the painting operation
         self.video_label.setPixmap(pixmap)  # Update the label pixmap
         
+    
+    def draw_line(self, event):
+        # Get the position of the click relative to the video label
+        position = event.position()
+        x = int(position.x())
+        y = int(position.y())  
+        print(f"x: {x} y: {y}")
+        # Get the size of the video frame
+        frame_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        frame_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
+        # Calculate the scale factors for converting label coordinates to frame coordinates
+        label_width = self.video_label.width()
+        label_height = self.video_label.height()
+        scale_x = frame_width / label_width
+        scale_y = frame_height / label_height
+
+        # Convert label click position to video frame coordinates
+        frame_x = int(x * scale_x)
+        frame_y = int(y * scale_y)
+
+        # Add the frame coordinates to the list of points for drawing the rectangle
+        self.rect_points_toCounting.append(frame_x)
+        self.rect_points_toCounting.append(frame_y)
+
+        self.rect_points.add_rect_point(x)
+        self.rect_points.add_rect_point(y)
+        print(self.rect_points.rect_points)
+        # Draw a circle at the clicked point on the video label
+        circle_radius = 3
+        pixmap = self.video_label.pixmap().copy()  # Create a copy of the pixmap to draw on
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(Qt.red))
+        painter.drawEllipse(QPoint(x, y), circle_radius, circle_radius)
+        
+        if len(self.rect_points.rect_points) >= 4:
+            start_x, start_y = self.rect_points.rect_points[-4], self.rect_points.rect_points[-3]  # Unpack start point coordinates
+            end_x, end_y = self.rect_points.rect_points[-2], self.rect_points.rect_points[-1]  # Unpack end point coordinates
+            painter.setPen(QPen(Qt.green))  # Change color and style as desired
+            painter.drawLine(QPoint(start_x, start_y), QPoint(end_x, end_y))
+            self.rect_points.rect_points = []   
+            # Reset the mousePressEvent to enable clicking again
+            self.video_label.mousePressEvent = None
+        painter.end()  # End the painting operation
+        self.video_label.setPixmap(pixmap)  # Update the label pixmap
+                
+            
 
     def reset_drawing(self):
         # Clear the rectangle points
