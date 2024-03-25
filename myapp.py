@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, QMessageBox, QGridLayout,QRadioButton
-from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt
-from PySide6.QtCore import QPoint, Qt, QCoreApplication
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, QMessageBox, QGridLayout,QRadioButton, QSplitter, QMenuBar, QMenu
+from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt, QAction
+from PySide6.QtCore import QPoint, Qt
 
 import cv2
 from carCount import RectPointsHandler, VideoHandler, startCarCounting
@@ -13,6 +13,8 @@ class CarCountingApp(QMainWindow):
         self.rect_points = RectPointsHandler()  # Instantiate RectPointsHandler
         self.video_handler = VideoHandler()  # Instantiate VideoHandler
         self.rect_points_toCounting = []
+        self.points_drawn_rectangle = 0  # Track the number of points drawn in rectangle mode
+        self.points_drawn_line = 0  # Track the number of points drawn in line mode
         self.cap = None  # Video capture object
         self.video_label = QLabel()
         self.video_scale_factor = 1.0  # Initial scale factor
@@ -23,10 +25,26 @@ class CarCountingApp(QMainWindow):
         self.setCentralWidget(central_widget)
         
         layout = QGridLayout(central_widget)
+        
+        # Create and add top menu bar
+        menu_bar = QMenuBar()
+        file_menu = QMenu("File", self)
+        help_menu = QMenu("Help", self)
+        menu_bar.addMenu(file_menu)
+        menu_bar.addMenu(help_menu)
+        self.setMenuBar(menu_bar)
+        
+        # Add actions to file menu
+        open_action = QAction("Open Video", self)
+        open_action.triggered.connect(self.select_video)
+        file_menu.addAction(open_action)
+        
         layout.setColumnStretch(0,1)
         layout.setRowStretch(0,1)
+
         self.video_label.setStyleSheet("border: 3px solid black")
         layout.addWidget(self.video_label,0,0,4,1)
+        
         
         
         self.select_mode = QLabel("Select mode rectangle/line")
@@ -42,9 +60,10 @@ class CarCountingApp(QMainWindow):
         self.b2 = QRadioButton("line")
         self.b2.toggled.connect(lambda:self.btnstate(self.b2))
 
+        self.btnstate(self.b1) # Call btnstate manually with b1 to set default mode
+
         layout.addWidget(self.b2,2,1)
-        
-        
+
 
       
         self.reset_button = QPushButton("Reset")
@@ -72,25 +91,18 @@ class CarCountingApp(QMainWindow):
         self.start_counting_button.clicked.connect(self.start_car_counting)
         layout.addWidget(self.start_counting_button,6,0,1,2)
         
-    # def eventFilter(self, obj, event):
-    #     if obj == self.video_label and event.type() == QEvent.MouseButtonPress:
-    #         if self.b1.isChecked():
-    #             self.draw_rectangle(event)
-    #             return True
-    #         elif self.b2.isChecked():
-    #             self.draw_line(event)
-    #             return True
-    #     return super().eventFilter(obj, event)
+        self.start_counting_button.setEnabled(False)
+
       
-    def btnstate(self,b):
-        
-        if b.text() == "rectangle" and b.isChecked():
-            print(b.text() + " is selected")
-            self.draw_rectangle
-                    
-        if b.text() == "line" and b.isChecked():
-            print(b.text() + " is selected")
-            self.draw_line
+    def btnstate(self, b):
+            if b.text() == "rectangle" and b.isChecked():
+                print(b.text() + " is selected")
+                self.video_label.mousePressEvent = self.draw_rectangle
+                print("video rectangle event")
+            elif b.text() == "line" and b.isChecked():
+                print(b.text() + " is selected")
+                self.video_label.mousePressEvent = self.draw_line
+                print("video line event")
 
                 
     def select_video(self):
@@ -99,6 +111,9 @@ class CarCountingApp(QMainWindow):
             self.video_handler.set_video_path(filename)
             self.cap = cv2.VideoCapture(filename)
             self.update_frame()
+            self.start_counting_button.setEnabled(True)  # Enable the button when video is selected
+        else:
+            self.start_counting_button.setEnabled(False)  # Disable the button if no video is selected
 
     def update_frame(self):
         ret, frame = self.cap.read()
@@ -116,17 +131,17 @@ class CarCountingApp(QMainWindow):
         q_img = QImage(frame_resized.data, target_width, target_height, target_width * 3, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(q_img)
         self.video_label.setPixmap(pixmap)
-
+        
         self.rect_points_toCounting = []
 
-        # Handle mouse clicks on the video label
-        if self.b1.isChecked():
-            self.video_label.mousePressEvent = self.draw_rectangle
-        elif self.b2.isChecked():
-            self.video_label.mousePressEvent = self.draw_line
 
 
     def draw_rectangle(self, event):
+        
+        self.points_drawn_line += 1
+        if self.points_drawn_line == 2:
+            self.b2.setEnabled(False)
+        
         # Get the position of the click relative to the video label
         position = event.position()
         x = int(position.x())
@@ -179,6 +194,11 @@ class CarCountingApp(QMainWindow):
         
     
     def draw_line(self, event):
+        
+        self.points_drawn_rectangle += 1
+        if self.points_drawn_rectangle == 2:
+            self.b1.setEnabled(False)
+        
         # Get the position of the click relative to the video label
         position = event.position()
         x = int(position.x())
@@ -244,6 +264,12 @@ class CarCountingApp(QMainWindow):
 
         # Draw the cleared pixmap on the video label
         self.video_label.setPixmap(pixmap)
+        self.b1.setEnabled(True)
+        self.b2.setEnabled(True)
+        self.points_drawn_rectangle = 0
+        self.points_drawn_line = 0
+        #set default to rectangle
+        self.b1.setChecked(True)
 
 
 
