@@ -199,13 +199,13 @@ class ObjectCounter:
                         elif self.counting_dict[track_id] != current_position and not is_inside:
                             self.out_counts += 1
                             self.counting_dict[track_id] = "out"
-                            self.class_counts[class_name] += 1
+                            # self.class_counts[class_name] += 1
                         else:
                             self.counting_dict[track_id] = current_position
 
                     else:
                         self.counting_dict[track_id] = current_position
-                        self.class_counts[class_name] += 1
+                        
                 elif len(self.reg_pts) == 2:
                     if prev_position is not None:
                         is_inside = (box[0] - prev_position[0]) * (
@@ -220,17 +220,17 @@ class ObjectCounter:
                         elif self.counting_dict[track_id] != current_position and not is_inside:
                             self.out_counts += 1
                             self.counting_dict[track_id] = "out"
-                            self.class_counts[class_name] += 1
                         else:
                             self.counting_dict[track_id] = current_position
                     else:
                         self.counting_dict[track_id] = None
-                        self.class_counts[class_name] += 1
 
         
 
         # Format counts for display
         counts_str = ", ".join([f"{class_name}: {count}" for class_name, count in self.class_counts.items()])
+        
+   
 
         # Display counts
         if counts_str:

@@ -1,4 +1,6 @@
 import cv2
+import os
+from datetime import datetime
 from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, QMessageBox, QGridLayout, QRadioButton, QMenuBar, QMenu
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt, QAction, QFont, QIcon
 from PySide6.QtCore import QPoint
@@ -7,6 +9,7 @@ from carCount import RectPointsHandler, VideoHandler, start_car_counting
 class CarCountingApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        
         self.setWindowTitle("Car Counting")
         self.resize(1280, 720)
         self.setWindowIcon(QIcon('./img/eye_icon.ico'))
@@ -16,10 +19,10 @@ class CarCountingApp(QMainWindow):
         self.cap = None
         self.video_label = QLabel()
         self.video_scale_factor = 1.0
-
         self.update_frame()
         self.init_ui()
-
+        self.setMouseTracking(True)  # Enable mouse tracking for the widget
+        self.mouseMoveEvent = self.handle_mouse_move
     def init_ui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -36,7 +39,11 @@ class CarCountingApp(QMainWindow):
         open_action = QAction("Open Video", self)
         open_action.triggered.connect(self.select_video)
         file_menu.addAction(open_action)
-
+        
+        save_action = QAction("Save Video As", self)
+        save_action.triggered.connect(self.select_save_video)
+        file_menu.addAction(save_action)
+        
         layout.setColumnStretch(0, 1)
         layout.setRowStretch(0, 1)
 
@@ -70,10 +77,15 @@ class CarCountingApp(QMainWindow):
         self.select_video_button.clicked.connect(self.select_video)
         layout.addWidget(self.select_video_button, 5, 0, 1, 2)
 
+        self.select_save_video_button = QPushButton("Save Video As")
+        self.select_save_video_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
+        self.select_save_video_button.clicked.connect(self.select_save_video)
+        layout.addWidget(self.select_save_video_button, 6, 0, 1, 2)
+        
         self.start_counting_button = QPushButton("Start Car Counting")
         self.start_counting_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.start_counting_button.clicked.connect(self.start_car_counting)
-        layout.addWidget(self.start_counting_button, 6, 0, 1, 2)
+        layout.addWidget(self.start_counting_button, 7, 0, 1, 2)
 
         self.start_counting_button.setEnabled(False)
         self.reset_button.setEnabled(False)
@@ -98,6 +110,15 @@ class CarCountingApp(QMainWindow):
             self.start_counting_button.setEnabled(False)
             self.reset_button.setEnabled(False)
 
+    def select_save_video(self):
+        filename, _ = QFileDialog.getSaveFileName(self, "Save Video File", "", "Video Files (*.mp4 *.avi)")
+        if filename:
+            self.video_handler.save_video_path(filename)
+            self.start_counting_button.setEnabled(True)
+            self.reset_button.setEnabled(True)
+        else:
+            self.start_counting_button.setEnabled(False)
+            self.reset_button.setEnabled(False)
     def update_frame(self):
         if not self.cap:
             self.video_label.setText("Please select video")
@@ -122,8 +143,18 @@ class CarCountingApp(QMainWindow):
         self.video_label.setPixmap(pixmap)
         self.btnstate(self.b1)
         self.rect_points_to_counting = []
+  
+    def handle_mouse_move(self, event):
+        position = event.position()
+        x = int(position.x())
+        y = int(position.y())
 
+        # Your logic to handle mouse move event
+        print("Mouse position:", x, y)
+        # Call any function or perform any action you want with x and y  
+    
     def draw_rectangle(self, event):
+       
         position = event.position()
         x = int(position.x())
         y = int(position.y())
@@ -232,7 +263,13 @@ class CarCountingApp(QMainWindow):
             if len(self.rect_points_to_counting) < 4:
                 self.show_message_box("Incomplete Rectangle", "Please select at least four points to define a rectangle.")
                 return
-            start_car_counting(self.video_handler.video_path, self.rect_points_to_counting)
+            if not self.video_handler.video_writer_path:
+                default_dir = "./output/"
+                os.makedirs(default_dir, exist_ok=True)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"output_{timestamp}.avi"
+                self.video_handler.video_writer_path = os.path.join(default_dir, filename)
+            start_car_counting(self.video_handler.video_path, self.video_handler.video_writer_path, self.rect_points_to_counting)
         else:
             self.show_message_box("Video not select", "Please select a video first.")
 
