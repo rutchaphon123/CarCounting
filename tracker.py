@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 import cv2
-
+import time
 from ultralytics.utils.checks import check_imshow, check_requirements
 from ultralytics.utils.plotting import Annotator, colors
 
@@ -47,6 +47,15 @@ class ObjectCounter:
         self.count_txt_thickness = 0
         self.count_txt_color = (0, 0, 0)
         self.count_color = (255, 255, 255)
+        
+        # Speed estimator information
+        self.current_time = 0
+        self.dist_data = {}
+        self.trk_idslist = []
+        self.spdl_dist_thresh = 10
+        self.trk_previous_times = {}
+        self.trk_previous_points = {}
+
 
         # Tracks info
         self.track_history = defaultdict(list)
@@ -68,6 +77,7 @@ class ObjectCounter:
         view_in_counts=True,
         view_out_counts=True,
         draw_tracks=False,
+        speed_estimation=False,
         count_txt_thickness=2,
         count_txt_color=(0, 0, 0),
         count_color=(255, 255, 255),
@@ -101,7 +111,7 @@ class ObjectCounter:
         self.view_out_counts = view_out_counts
         self.track_thickness = track_thickness
         self.draw_tracks = draw_tracks
-
+        self.speed_estimation = speed_estimation
         # Region and line selection
         if len(reg_pts) == 2:
             print("Line Counter Initiated.")
@@ -156,7 +166,9 @@ class ObjectCounter:
         elif event == cv2.EVENT_LBUTTONUP:
             self.is_drawing = False
             self.selected_point = None
+    
 
+    
     def extract_and_process_tracks(self, tracks):
         """Extracts and processes tracks for object counting in a video stream."""
 
@@ -165,15 +177,35 @@ class ObjectCounter:
 
         if tracks[0].boxes.id is not None:
             boxes = tracks[0].boxes.xyxy.cpu()
-            clss = tracks[0].boxes.cls.cpu().tolist()
+            classes = tracks[0].boxes.cls.cpu().tolist()
             track_ids = tracks[0].boxes.id.int().cpu().tolist()
-
+              
+                    
+         
             # Extract tracks
-            for box, track_id, cls in zip(boxes, track_ids, clss):
+            for box, track_id, cls in zip(boxes, track_ids, classes):
                 class_name = self.names[cls]
 
                 # Draw bounding box
-                self.annotator.box_label(box, label=f"{track_id}:{class_name}", color=colors(int(cls), True))
+                if track_id not in self.trk_previous_times:
+                    self.trk_previous_times[track_id] = time.time()
+                    centroid = Point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)  # Calculate centroid
+                    self.trk_previous_points[track_id] = centroid
+                else:
+                    current_time = time.time()
+                    time_diff = current_time - self.trk_previous_times[track_id]
+                    centroid = Point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)  # Calculate centroid
+                    dist_diff = centroid.distance(self.trk_previous_points[track_id])
+                    speed = (dist_diff / time_diff) * 3.6  # Convert speed to km/hr
+                    self.dist_data[track_id] = speed
+                    self.trk_previous_times[track_id] = current_time
+                    self.trk_previous_points[track_id] = centroid
+                    # Add speed to box label
+                    if self.speed_estimation:
+                        self.annotator.box_label(box, label=f"{track_id}:{class_name}-Speed: {speed:.2f} km/hr", color=colors(int(cls), True))
+                    else:
+                        self.annotator.box_label(box, label=f"{track_id}:{class_name}", color=colors(int(cls), True))
+                
 
                 # Draw Tracks
                 track_line = self.track_history[track_id]
@@ -199,13 +231,14 @@ class ObjectCounter:
                         elif self.counting_dict[track_id] != current_position and not is_inside:
                             self.out_counts += 1
                             self.counting_dict[track_id] = "out"
-                            # self.class_counts[class_name] += 1
                         else:
                             self.counting_dict[track_id] = current_position
 
                     else:
                         self.counting_dict[track_id] = current_position
                         
+                   
+
                 elif len(self.reg_pts) == 2:
                     if prev_position is not None:
                         is_inside = (box[0] - prev_position[0]) * (
@@ -225,12 +258,8 @@ class ObjectCounter:
                     else:
                         self.counting_dict[track_id] = None
 
-        
-
         # Format counts for display
         counts_str = ", ".join([f"{class_name}: {count}" for class_name, count in self.class_counts.items()])
-        
-   
 
         # Display counts
         if counts_str:

@@ -4,7 +4,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, 
 QMessageBox, QGridLayout, QRadioButton, QMenuBar, QMenu, QSplashScreen, QProgressBar, QCheckBox)
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt, QAction, QFont, QIcon
-from PySide6.QtCore import QPoint, QTimer
+from PySide6.QtCore import QPoint
 from carCount import RectPointsHandler, VideoHandler, start_car_counting
 
 class CarCountingApp(QMainWindow):
@@ -20,6 +20,7 @@ class CarCountingApp(QMainWindow):
         self.cap = None
         self.video_label = QLabel()
         self.video_scale_factor = 1.0
+        self.speed_estimation = False
         self.update_frame()
         self.init_ui()
         self.setMouseTracking(True)  # Enable mouse tracking for the widget
@@ -52,56 +53,52 @@ class CarCountingApp(QMainWindow):
         layout.setRowStretch(0, 1)
 
         self.video_label.setStyleSheet("border: 3px solid black")
-        layout.addWidget(self.video_label, 0, 0, 7, 1)
+        layout.addWidget(self.video_label, 0, 0, 6, 1)
         
-        self.select_mode = QLabel("Select detection mode:")
+        self.select_mode = QLabel("Detect speed:")
         self.select_mode.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.select_mode, 0, 1)
         
-        self.checkbox1 = QCheckBox("detect for counting")
-        self.checkbox1.stateChanged.connect(self.checkbox_state)
-        layout.addWidget(self.checkbox1, 1, 1)
-        
         self.checkbox2 = QCheckBox("detect for speed")
         self.checkbox2.stateChanged.connect(self.checkbox_state)
-        layout.addWidget(self.checkbox2, 2, 1)
+        layout.addWidget(self.checkbox2, 1, 1)
 
         self.select_mode = QLabel("Select mode rectangle/line")
         self.select_mode.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.select_mode, 3, 1)
+        layout.addWidget(self.select_mode, 2, 1)
 
         self.b1 = QRadioButton("rectangle")
         self.b1.setChecked(True)
         self.b1.toggled.connect(lambda: self.btnstate(self.b1))
-        layout.addWidget(self.b1, 4, 1)
+        layout.addWidget(self.b1, 3, 1)
 
         self.b2 = QRadioButton("line")
         self.b2.toggled.connect(lambda: self.btnstate(self.b2))
-        layout.addWidget(self.b2, 5, 1)
+        layout.addWidget(self.b2, 4, 1)
 
         self.reset_button = QPushButton("Reset")
         self.reset_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.reset_button.clicked.connect(self.reset_drawing)
-        layout.addWidget(self.reset_button, 6, 1)
+        layout.addWidget(self.reset_button, 5, 1)
 
         self.label = QLabel("Please select video:")
         self.label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.label, 7, 0, 1, 2)
+        layout.addWidget(self.label, 6, 0, 1, 2)
 
         self.select_video_button = QPushButton("Choose Video")
         self.select_video_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.select_video_button.clicked.connect(self.select_video)
-        layout.addWidget(self.select_video_button, 8, 0, 1, 2)
+        layout.addWidget(self.select_video_button, 7, 0, 1, 2)
 
         self.select_save_video_button = QPushButton("Save Video As")
         self.select_save_video_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.select_save_video_button.clicked.connect(self.select_save_video)
-        layout.addWidget(self.select_save_video_button, 9, 0, 1, 2)
+        layout.addWidget(self.select_save_video_button, 8, 0, 1, 2)
         
         self.start_counting_button = QPushButton("Start Car Counting")
         self.start_counting_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.start_counting_button.clicked.connect(self.start_car_counting)
-        layout.addWidget(self.start_counting_button, 10, 0, 1, 2)
+        layout.addWidget(self.start_counting_button, 9, 0, 1, 2)
 
         self.start_counting_button.setEnabled(False)
         self.reset_button.setEnabled(False)
@@ -114,11 +111,12 @@ class CarCountingApp(QMainWindow):
             self.video_label.mousePressEvent = self.draw_line
             return "line"
     
-    def checkbox_state(self, state):
-        if state == Qt.Checked:
-            print('Checked')
+    def checkbox_state(self):
+        if self.checkbox2.isChecked():
+            self.speed_estimation = True    
         else:
-            print('Unchecked')
+            self.speed_estimation = False
+            
 
     def select_video(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Video File", "", "Video Files (*.mp4 *.avi)")
@@ -291,7 +289,7 @@ class CarCountingApp(QMainWindow):
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"output_{timestamp}.avi"
                 self.video_handler.video_writer_path = os.path.join(default_dir, filename)
-            start_car_counting(self.video_handler.video_path, self.video_handler.video_writer_path, self.rect_points_to_counting)
+            start_car_counting(self.video_handler.video_path, self.video_handler.video_writer_path, self.rect_points_to_counting, self.speed_estimation)
         else:
             self.show_message_box("Video not select", "Please select a video first.")
 

@@ -1,5 +1,5 @@
 import cv2
-from ultralytics import RTDETR
+from ultralytics import YOLO
 from datetime import timedelta
 
 import supervision as sv
@@ -7,7 +7,7 @@ import tracker
 
 
 # Load the  model
-model = RTDETR("rtdetr-l.pt")
+model = YOLO("yolov8n.pt")
 
 class RectPointsHandler:
   def __init__(self):
@@ -28,6 +28,8 @@ class VideoHandler:
     self.video_writer_path = video_writer_path
     print(f"Video path save video at {video_writer_path} .")
 
+
+
 def get_video_info(video_path):
   # Extracting information about the video
   video_info = sv.VideoInfo.from_video_path(video_path)
@@ -41,7 +43,7 @@ def get_video_info(video_path):
   print(f"\033[1mFPS:\033[0m {fps}")
   print(f"\033[1mLength:\033[0m {video_length}")
 
-def start_car_counting(video_path, video_writer_path, rect_points):
+def start_car_counting(video_path, video_writer_path, rect_points, speed_estimation_btn):
   print(f"Start counting cars path at {video_path}")
   while not video_path:
     pass
@@ -61,24 +63,27 @@ def start_car_counting(video_path, video_writer_path, rect_points):
   
   video_writer = cv2.VideoWriter(video_writer_path,
               cv2.VideoWriter_fourcc(*'mp4v'),
-              30,
+              10,
               (window_width, window_height))
-
+  #add counter
   counter = tracker.ObjectCounter()
   counter.set_args(view_img=True,
           reg_pts=region_points,
           classes_names=model.names,
-          draw_tracks=True)
+          draw_tracks=False,
+          speed_estimation=speed_estimation_btn,)
   class_counts = counter.class_counts
+ 
+  
+  
   while cap.isOpened():
     success, frame = cap.read()
     
-    counts_str = ", ".join([f"{class_name}: {count}" for class_name, count in class_counts.items()])
-    counts_obj = {class_name: count for class_name, count in class_counts.items()}
- 
     if success:
-      results = model.track(frame, persist=True, conf=0.4, classes = [2,3,5,7])  # Adjust confidence/iou thresholds
-      annotated_frame = results[0].plot()
+      results = model.track(frame, persist=True, conf=0.4, classes=[2, 3, 5, 7])  # Adjust confidence/iou thresholds
+      
+      
+      annotated_frame = results[0].plot(labels=False)
 
       (h, w) = annotated_frame.shape[:2]
       r = window_width / float(w)
