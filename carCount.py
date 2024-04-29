@@ -4,7 +4,7 @@ from ultralytics import YOLO
 from datetime import timedelta
 # from ultralytics import RTDETR
 import supervision as sv
-import tracker
+import tracker, csv, datetime, os
 
 
 # Load the  model
@@ -31,6 +31,29 @@ class VideoHandler:
     print(f"Video path save video at {video_writer_path} .")
 
 
+class csvHandler:
+    def __init__(self):
+        self.csv_writer_path = None
+
+    def export_to_csv(self, data, filename):
+        output_dir = "output/csv"
+        os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
+        
+        current_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        csv_filename = f"{filename}_{current_datetime}.csv"
+        csv_filepath = os.path.join(output_dir, csv_filename)
+
+        with open(csv_filepath, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Track ID', 'Class', 'Speed', 'Time'])
+
+            for track_id, track_data in data.items():
+                class_name = track_data["class_name"]
+                speed = track_data["speed"]
+                time_data = track_data["time_data"]
+                writer.writerow([track_id, class_name, speed, time_data])
+
+        print(f"CSV file '{csv_filepath}' written successfully.")
 
 def get_video_info(video_path):
   # Extracting information about the video
@@ -44,6 +67,9 @@ def get_video_info(video_path):
   print(f"\033[1mVideo Resolution:\033[0m ({width}, {height})")
   print(f"\033[1mFPS:\033[0m {fps}")
   print(f"\033[1mLength:\033[0m {video_length}")
+
+
+
 
 def start_car_counting(video_path, video_writer_path, rect_points, speed_estimation_btn):
   print(f"Start counting cars path at {video_path}")
@@ -74,8 +100,8 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
           classes_names=model.names,
           draw_tracks=False,
           speed_estimation=speed_estimation_btn,)
-  class_counts = counter.class_counts
- 
+  
+  all_data = counter.object_info
   
   
   while cap.isOpened():
@@ -93,12 +119,16 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
       resized_frame = cv2.resize(annotated_frame, dim, interpolation=cv2.INTER_AREA)
 
       current_time = int(cap.get(cv2.CAP_PROP_POS_MSEC))
+      hours = str(int(current_time / 3600000)).zfill(2)
       minutes = str(int(current_time / 60000)).zfill(2)
       seconds = str(int((current_time % 60000) / 1000)).zfill(2)
-      time_text = f"{minutes}:{seconds}"
+      
+      time_info = [hours, minutes, seconds]
+      
+      time_text = f"{hours}:{minutes}:{seconds}"
       cv2.putText(resized_frame, time_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-      frame = counter.start_counting(resized_frame, results)
+      
+      frame = counter.start_counting(resized_frame, results, time_info)
       video_writer.write(frame)
 
       if cv2.waitKey(1) & 0xFF == ord("q") or cv2.getWindowProperty('Ultralytics YOLOv8 Object Counter', cv2.WND_PROP_VISIBLE) < 1:  #break when hit "q" button
@@ -109,3 +139,6 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
 
   cap.release()
   cv2.destroyAllWindows()
+  
+  csv_writer = csvHandler()
+  csv_writer.export_to_csv(all_data,"output_csv")

@@ -2,8 +2,7 @@
 
 from collections import defaultdict
 
-import cv2
-import time
+import cv2, time
 from ultralytics.utils.checks import check_imshow, check_requirements
 from ultralytics.utils.plotting import Annotator, colors
 
@@ -39,11 +38,15 @@ class ObjectCounter:
         self.names = None  # Classes names
         self.annotator = None  # Annotator
         self.window_name = "Ultralytics YOLOv8 Object Counter"
+        
+        #All object information
+        self.object_info = {}
 
         # Object counting Information
         self.in_counts = 0
         self.out_counts = 0
         self.counting_dict = {}
+        self.track_timestamps = {}
         self.count_txt_thickness = 0
         self.count_txt_color = (0, 0, 0)
         self.count_bg_color = (255, 255, 255)
@@ -169,7 +172,7 @@ class ObjectCounter:
     
 
     
-    def extract_and_process_tracks(self, tracks):
+    def extract_and_process_tracks(self, tracks, time_info):
         """Extracts and processes tracks for object counting in a video stream."""
 
         # Annotator Init and region drawing
@@ -179,13 +182,15 @@ class ObjectCounter:
             boxes = tracks[0].boxes.xyxy.cpu()
             classes = tracks[0].boxes.cls.cpu().tolist()
             track_ids = tracks[0].boxes.id.int().cpu().tolist()
-              
+           
+            
                     
          
             # Extract tracks
             for box, track_id, cls in zip(boxes, track_ids, classes):
                 class_name = self.names[cls]
-
+               
+                
                 # Draw bounding box
                 if track_id not in self.trk_previous_times:
                     self.trk_previous_times[track_id] = time.time()
@@ -228,9 +233,18 @@ class ObjectCounter:
                             self.in_counts += 1
                             self.counting_dict[track_id] = "in"
                             self.class_counts[class_name] += 1
+                            self.track_timestamps[track_id] = f"{time_info[0]}:{time_info[1]}:{time_info[2]}"
+                            #add speed and time to object
+                            speed = self.dist_data.get(track_id, 0) if self.speed_estimation else None
+                            time_data = self.track_timestamps.get(track_id,0)
+                            
+                            self.object_info.setdefault(track_id, {"class_name":class_name, "speed": speed, "time_data":time_data})
+                            
+                            print(f"all data: {self.object_info}")
                         elif self.counting_dict[track_id] != current_position and not is_inside:
                             self.out_counts += 1
                             self.counting_dict[track_id] = "out"
+                            
                         else:
                             self.counting_dict[track_id] = current_position
 
@@ -250,6 +264,7 @@ class ObjectCounter:
                             self.in_counts += 1
                             self.counting_dict[track_id] = "in"
                             self.class_counts[class_name] += 1
+                            self.track_timestamps[track_id] = f"{time_info[0]}:{time_info[1]}:{time_info[2]}:"
                         elif self.counting_dict[track_id] != current_position and not is_inside:
                             self.out_counts += 1
                             self.counting_dict[track_id] = "out"
@@ -281,7 +296,7 @@ class ObjectCounter:
             if (cv2.waitKey(1) & 0xFF == ord("q")) or (cv2.getWindowProperty(self.window_name, cv2.WND_PROP_VISIBLE) < 1):
                 return
 
-    def start_counting(self, im0, tracks):
+    def start_counting(self, im0, tracks, time_info):
         """
         Main function to start the object counting process.
 
@@ -290,7 +305,7 @@ class ObjectCounter:
             tracks (list): List of tracks obtained from the object tracking process.
         """
         self.im0 = im0  # store image
-        self.extract_and_process_tracks(tracks)  # draw region even if no objects
+        self.extract_and_process_tracks(tracks, time_info)  # draw region even if no objects
 
         if self.view_img:
             self.display_frames()
