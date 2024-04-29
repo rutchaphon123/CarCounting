@@ -1,14 +1,16 @@
 import cv2
 from ultralytics import YOLO
-from datetime import timedelta
 
+from datetime import timedelta
+# from ultralytics import RTDETR
 import supervision as sv
 import tracker
 
 
 # Load the  model
 model = YOLO("yolov8n.pt")
-
+# model = RTDETR('rtdetr-l.pt')
+# model = NAS('yolo_nas_s.pt')
 class RectPointsHandler:
   def __init__(self):
     self.rect_points = []
@@ -99,13 +101,7 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
       frame = counter.start_counting(resized_frame, results)
       video_writer.write(frame)
 
-      if cv2.waitKey(1) == ord('a'):  # Left arrow - rewind 5 seconds
-        current_time = max(0, current_time - 5000)
-        cap.set(cv2.CAP_PROP_POS_MSEC, current_time)
-      elif cv2.waitKey(1) == ord('d'):  # Right arrow - fast-forward 5 seconds
-        current_time += 5000
-        cap.set(cv2.CAP_PROP_POS_MSEC, current_time)
-      elif cv2.waitKey(1) == ord('q') :  # Quit or window closed or cv2.getWindowProperty('Car Counting', cv2.WND_PROP_VISIBLE) < 1
+      if cv2.waitKey(1) & 0xFF == ord("q") or cv2.getWindowProperty('Ultralytics YOLOv8 Object Counter', cv2.WND_PROP_VISIBLE) < 1:  #break when hit "q" button
         break
     else:
       # Break the loop if the end of the video is reached

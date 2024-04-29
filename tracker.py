@@ -46,7 +46,7 @@ class ObjectCounter:
         self.counting_dict = {}
         self.count_txt_thickness = 0
         self.count_txt_color = (0, 0, 0)
-        self.count_color = (255, 255, 255)
+        self.count_bg_color = (255, 255, 255)
         
         # Speed estimator information
         self.current_time = 0
@@ -260,14 +260,14 @@ class ObjectCounter:
 
         # Format counts for display
         counts_str = ", ".join([f"{class_name}: {count}" for class_name, count in self.class_counts.items()])
-
+        counts_str = counts_str.rstrip()
+        counts_str = counts_str.split("\t")
         # Display counts
         if counts_str:
-            self.annotator.count_labels(
+            self.annotator.display_counts(
                 counts=counts_str,
-                count_txt_size=self.count_txt_thickness,
-                txt_color=self.count_txt_color,
-                color=self.count_color,
+                count_txt_color=self.count_txt_color,
+                count_bg_color=self.count_bg_color,
             )
     def display_frames(self):
         """Display frame."""
@@ -278,7 +278,7 @@ class ObjectCounter:
                 cv2.setMouseCallback(self.window_name, self.mouse_event_for_region, {"region_points": self.reg_pts})
             cv2.imshow(self.window_name, self.im0)
             # Break Window
-            if cv2.waitKey(1) & 0xFF == ord("q"):
+            if (cv2.waitKey(1) & 0xFF == ord("q")) or (cv2.getWindowProperty(self.window_name, cv2.WND_PROP_VISIBLE) < 1):
                 return
 
     def start_counting(self, im0, tracks):
