@@ -190,7 +190,7 @@ class ObjectCounter:
             for box, track_id, cls in zip(boxes, track_ids, classes):
                 class_name = self.names[cls]
                
-                
+
                 # Draw bounding box
                 if track_id not in self.trk_previous_times:
                     self.trk_previous_times[track_id] = time.time()
@@ -207,7 +207,7 @@ class ObjectCounter:
                     self.trk_previous_points[track_id] = centroid
                     # Add speed to box label
                     if self.speed_estimation:
-                        self.annotator.box_label(box, label=f"{track_id}:{class_name}-Speed: {speed:.2f} km/hr", color=colors(int(cls), True))
+                        self.annotator.box_label(box, label=f"{track_id}:{class_name}:{speed:.2f} km/hr", color=colors(int(cls), True))
                     else:
                         self.annotator.box_label(box, label=f"{track_id}:{class_name}", color=colors(int(cls), True))
                 

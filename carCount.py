@@ -1,14 +1,14 @@
 import cv2
-from ultralytics import YOLO
+# from ultralytics import YOLO
 
 from datetime import timedelta
-# from ultralytics import RTDETR
+from ultralytics import RTDETR
 import supervision as sv
 import tracker, csv, datetime, os
 
 
 # Load the  model
-model = YOLO("yolov8n.pt")
+model = YOLO("yolov8s.pt")
 # model = RTDETR('rtdetr-l.pt')
 # model = NAS('yolo_nas_s.pt')
 class RectPointsHandler:
@@ -45,7 +45,7 @@ class csvHandler:
 
         with open(csv_filepath, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['Track ID', 'Class', 'Speed', 'Time'])
+            writer.writerow(['Track ID', 'Class', 'Speed (km/hr)', 'Time'])
 
             for track_id, track_data in data.items():
                 class_name = track_data["class_name"]
