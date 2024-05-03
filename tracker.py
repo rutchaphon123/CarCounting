@@ -58,6 +58,9 @@ class ObjectCounter:
         self.spdl_dist_thresh = 10
         self.trk_previous_times = {}
         self.trk_previous_points = {}
+        self.trk_previous_speeds = {}
+        self.trk_previous_times = {}
+        self.trk_accumulated_distances = {}
 
 
         # Tracks info
@@ -182,10 +185,6 @@ class ObjectCounter:
             boxes = tracks[0].boxes.xyxy.cpu()
             classes = tracks[0].boxes.cls.cpu().tolist()
             track_ids = tracks[0].boxes.id.int().cpu().tolist()
-           
-            
-                    
-         
             # Extract tracks
             for box, track_id, cls in zip(boxes, track_ids, classes):
                 class_name = self.names[cls]
@@ -193,15 +192,15 @@ class ObjectCounter:
 
                 # Draw bounding box
                 if track_id not in self.trk_previous_times:
-                    self.trk_previous_times[track_id] = time.time()
+                    self.trk_previous_times[track_id] = time.time_ns()
                     centroid = Point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)  # Calculate centroid
                     self.trk_previous_points[track_id] = centroid
                 else:
-                    current_time = time.time()
-                    time_diff = current_time - self.trk_previous_times[track_id]
+                    current_time = time.time_ns()
+                    delta_time = (current_time - self.trk_previous_times[track_id]) / 1e9  # คำนวณ delta_time
                     centroid = Point((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)  # Calculate centroid
                     dist_diff = centroid.distance(self.trk_previous_points[track_id])
-                    speed = (dist_diff / time_diff) * 3.6  # Convert speed to km/hr
+                    speed = (dist_diff / delta_time) * 3.6  # Convert speed to km/hr
                     self.dist_data[track_id] = speed
                     self.trk_previous_times[track_id] = current_time
                     self.trk_previous_points[track_id] = centroid
@@ -210,7 +209,6 @@ class ObjectCounter:
                         self.annotator.box_label(box, label=f"{track_id}:{class_name}:{speed:.2f} km/hr", color=colors(int(cls), True))
                     else:
                         self.annotator.box_label(box, label=f"{track_id}:{class_name}", color=colors(int(cls), True))
-                
 
                 # Draw Tracks
                 track_line = self.track_history[track_id]
