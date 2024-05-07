@@ -58,9 +58,8 @@ class ObjectCounter:
         self.spdl_dist_thresh = 10
         self.trk_previous_times = {}
         self.trk_previous_points = {}
-        self.trk_previous_speeds = {}
         self.trk_previous_times = {}
-        self.trk_accumulated_distances = {}
+
 
 
         # Tracks info
@@ -272,16 +271,19 @@ class ObjectCounter:
                         self.counting_dict[track_id] = None
 
         # Format counts for display
-        counts_str = ", ".join([f"{class_name}: {count}" for class_name, count in self.class_counts.items()])
-        counts_str = counts_str.rstrip()
-        counts_str = counts_str.split("\t")
+        # counts_str = ", ".join([f"{class_name}: {count}" for class_name, count in self.class_counts.items()])
+        # counts_str = counts_str.rstrip()
+        # counts_str = counts_str.split("\t")
+        count_with_class = {class_name: count for class_name, count in self.class_counts.items()}
+       
         # Display counts
-        if counts_str:
-            self.annotator.display_counts(
-                counts=counts_str,
-                count_txt_color=self.count_txt_color,
-                count_bg_color=self.count_bg_color,
-            )
+        if count_with_class:
+           # Adjust position and font size as needed
+            self.annotator.display_analytics(im0 = self.im0, 
+                                             text = count_with_class, 
+                                             txt_color= self.count_txt_color, 
+                                             bg_color= self.count_bg_color, 
+                                             margin=10)
     def display_frames(self):
         """Display frame."""
         if self.env_check:
