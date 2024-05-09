@@ -2,7 +2,7 @@ import cv2
 import os, sys, time
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, 
-QMessageBox, QGridLayout, QRadioButton, QMenuBar, QMenu, QSplashScreen, QProgressBar, QCheckBox)
+QMessageBox, QGridLayout, QRadioButton, QMenuBar, QMenu, QSplashScreen, QCheckBox)
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt, QAction, QFont, QIcon
 from PySide6.QtCore import QPoint
 from carCount import RectPointsHandler, VideoHandler, start_car_counting
@@ -28,7 +28,7 @@ class CarCountingApp(QMainWindow):
         
     def init_ui(self):
 
-
+        
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -43,11 +43,19 @@ class CarCountingApp(QMainWindow):
 
         open_action = QAction("Open Video", self)
         open_action.triggered.connect(self.select_video)
+        open_action.setShortcut("Ctrl+O")
         file_menu.addAction(open_action)
         
-        save_action = QAction("Save Video As", self)
+        save_action = QAction("Save Video As...", self)
         save_action.triggered.connect(self.select_save_video)
+        save_action.setShortcut("Ctrl+S")
         file_menu.addAction(save_action)
+        
+        file_menu.addSeparator()
+        exit_action = QAction("&Exit", self)
+        exit_action.triggered.connect(self.close_application)
+        file_menu.addAction(exit_action)
+        
         
         layout.setColumnStretch(0, 1)
         layout.setRowStretch(0, 1)
@@ -55,7 +63,7 @@ class CarCountingApp(QMainWindow):
         self.video_label.setStyleSheet("border: 3px solid black")
         layout.addWidget(self.video_label, 0, 0, 6, 1)
         
-        self.select_mode = QLabel("Detect speed:")
+        self.select_mode = QLabel("Detect speed: ")
         self.select_mode.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.select_mode, 0, 1)
         
@@ -80,7 +88,6 @@ class CarCountingApp(QMainWindow):
         self.reset_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.reset_button.clicked.connect(self.reset_drawing)
         layout.addWidget(self.reset_button, 5, 1)
-
         self.label = QLabel("Please select video:")
         self.label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.label, 6, 0, 1, 2)
@@ -90,7 +97,7 @@ class CarCountingApp(QMainWindow):
         self.select_video_button.clicked.connect(self.select_video)
         layout.addWidget(self.select_video_button, 7, 0, 1, 2)
 
-        self.select_save_video_button = QPushButton("Save Video As")
+        self.select_save_video_button = QPushButton("Save Video As...")
         self.select_save_video_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.select_save_video_button.clicked.connect(self.select_save_video)
         layout.addWidget(self.select_save_video_button, 8, 0, 1, 2)
@@ -139,6 +146,11 @@ class CarCountingApp(QMainWindow):
         else:
             self.start_counting_button.setEnabled(False)
             self.reset_button.setEnabled(False)
+            
+    def close_application(self):
+        """Exits the program gracefully."""
+        self.close()
+
     def update_frame(self):
         if not self.cap:
             self.video_label.setText("Please select video")
@@ -179,19 +191,8 @@ class CarCountingApp(QMainWindow):
         x = int(position.x())
         y = int(position.y())
 
-        frame_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        frame_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-
-        label_width = self.video_label.width()
-        label_height = self.video_label.height()
-        scale_x = frame_width / label_width
-        scale_y = frame_height / label_height
-
-        frame_x = int(x * scale_x)
-        frame_y = int(y * scale_y)
-
-        self.rect_points_to_counting.append(frame_x)
-        self.rect_points_to_counting.append(frame_y)
+        self.rect_points_to_counting.append(x)
+        self.rect_points_to_counting.append(y)
 
         self.rect_points.add_rect_point(x)
         self.rect_points.add_rect_point(y)
@@ -208,7 +209,7 @@ class CarCountingApp(QMainWindow):
         if len(self.rect_points.rect_points) >= 4:
             start_x, start_y = self.rect_points.rect_points[-4], self.rect_points.rect_points[-3]
             end_x, end_y = self.rect_points.rect_points[-2], self.rect_points.rect_points[-1]
-            painter.setPen(QPen(Qt.green))
+            painter.setPen(QPen(Qt.green, 3))
             painter.drawLine(QPoint(start_x, start_y), QPoint(end_x, end_y))
             if len(self.rect_points.rect_points) == 8:
                 painter.drawLine(QPoint(self.rect_points.rect_points[-2], self.rect_points.rect_points[-1]),
@@ -253,7 +254,7 @@ class CarCountingApp(QMainWindow):
         if len(self.rect_points.rect_points) >= 4:
             start_x, start_y = self.rect_points.rect_points[-4], self.rect_points.rect_points[-3]
             end_x, end_y = self.rect_points.rect_points[-2], self.rect_points.rect_points[-1]
-            painter.setPen(QPen(Qt.green))
+            painter.setPen(QPen(Qt.green, 3))
             painter.drawLine(QPoint(start_x, start_y), QPoint(end_x, end_y))
             self.rect_points.rect_points = []
             self.video_label.mousePressEvent = None
@@ -300,32 +301,19 @@ class CarCountingApp(QMainWindow):
         msg_box.exec()
 
 if __name__ == "__main__":
-    app = QApplication([])
-    # Create and display the splash screen
-    splash_pix = QPixmap('./img/splashscreen.JPG')
-    splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-    splash.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
-    splash.setEnabled(False)
-    # splash = QSplashScreen(splash_pix)
-    # adding progress bar
-    progressBar = QProgressBar(splash)
-    progressBar.setMaximum(10)
-    progressBar.setGeometry(0, splash_pix.height() - 50, splash_pix.width(), 20)
-    # splash.setMask(splash_pix.mask())
+  app = QApplication([])
 
-    splash.show()
-    
-    
-    for i in range(1, 11):
-        progressBar.setValue(i)
-        t = time.time()
-        while time.time() < t + 0.1:
-           app.processEvents()
+  # Create and display the splash screen (moved before CarCountingApp)
+  splash_pix = QPixmap('./img/splashscreen.JPG')
+  splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+  splash.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+  splash.setEnabled(False)
+  splash.show()
+  splash.showMessage("Loaded modules")
+  app.processEvents()
 
-    # Simulate something that takes time
-    time.sleep(1)
-    
-    car_counting_app = CarCountingApp()
-    car_counting_app.show()
-    splash.finish(car_counting_app)
-    sys.exit(app.exec())
+  # Now create and show the CarCountingApp after splash screen
+  car_counting_app = CarCountingApp()
+  car_counting_app.show()
+  splash.finish(car_counting_app)
+  sys.exit(app.exec())
