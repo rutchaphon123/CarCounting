@@ -4,7 +4,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, 
 QMessageBox, QGridLayout, QRadioButton, QMenuBar, QMenu, QSplashScreen, QCheckBox)
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt, QAction, QFont, QIcon
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QPoint, QSize
 from carCount import RectPointsHandler, VideoHandler, start_car_counting
 
 class CarCountingApp(QMainWindow):
@@ -17,6 +17,7 @@ class CarCountingApp(QMainWindow):
         self.rect_points = RectPointsHandler()
         self.video_handler = VideoHandler()
         self.rect_points_to_counting = []
+        self.coordinate_scale = []
         self.cap = None
         self.video_label = QLabel()
         self.video_scale_factor = 1.0
@@ -56,24 +57,32 @@ class CarCountingApp(QMainWindow):
         exit_action.triggered.connect(self.close_application)
         file_menu.addAction(exit_action)
         
-        
-        layout.setColumnStretch(0, 1)
-        layout.setRowStretch(0, 1)
 
-        self.video_label.setStyleSheet("border: 3px solid black")
+        layout.setColumnStretch(0, 1)
+        layout.setRowStretch(0, 1)        
+
+        self.video_label.setStyleSheet("border: 3px solid #3D3B40")
         layout.addWidget(self.video_label, 0, 0, 6, 1)
+        self.video_label.setMaximumSize(QSize(1280, 720))
+        self.video_label.setMinimumSize(QSize(1280, 720))
         
-        self.select_mode = QLabel("Detect speed: ")
+        self.select_mode = QLabel("")
         self.select_mode.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.select_mode, 0, 1)
+        # self.select_mode.setStyleSheet("background-color: #50C4ED")
+        self.select_mode.setMaximumWidth(300)
+        self.select_mode.setMaximumHeight(460)
+        
+        
+   
+
+        self.select_mode = QLabel("Select mode rectangle/line and speed")
+        self.select_mode.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.select_mode, 1, 1)
         
         self.checkbox2 = QCheckBox("detect for speed")
         self.checkbox2.stateChanged.connect(self.checkbox_state)
-        layout.addWidget(self.checkbox2, 1, 1)
-
-        self.select_mode = QLabel("Select mode rectangle/line")
-        self.select_mode.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.select_mode, 2, 1)
+        layout.addWidget(self.checkbox2, 2, 1)
 
         self.b1 = QRadioButton("rectangle")
         self.b1.setChecked(True)
@@ -88,10 +97,12 @@ class CarCountingApp(QMainWindow):
         self.reset_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.reset_button.clicked.connect(self.reset_drawing)
         layout.addWidget(self.reset_button, 5, 1)
+        
+
         self.label = QLabel("Please select video:")
         self.label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.label, 6, 0, 1, 2)
-
+        
         self.select_video_button = QPushButton("Choose Video")
         self.select_video_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.select_video_button.clicked.connect(self.select_video)
@@ -131,11 +142,13 @@ class CarCountingApp(QMainWindow):
             self.video_handler.set_video_path(filename)
             self.cap = cv2.VideoCapture(filename)
             self.update_frame()
+            self.label.setText(f"Video path: {self.video_handler.video_path}")
             self.start_counting_button.setEnabled(True)
             self.reset_button.setEnabled(True)
-        else:
+        elif self.video_handler.video_path == None:
             self.start_counting_button.setEnabled(False)
             self.reset_button.setEnabled(False)
+
 
     def select_save_video(self):
         filename, _ = QFileDialog.getSaveFileName(self, "Save Video File", "", "Video Files (*.mp4 *.avi)")
@@ -143,7 +156,7 @@ class CarCountingApp(QMainWindow):
             self.video_handler.save_video_path(filename)
             self.start_counting_button.setEnabled(True)
             self.reset_button.setEnabled(True)
-        else:
+        elif self.video_handler.video_path == None:
             self.start_counting_button.setEnabled(False)
             self.reset_button.setEnabled(False)
             
@@ -173,11 +186,13 @@ class CarCountingApp(QMainWindow):
         q_img = QImage(frame_resized.data, target_width, target_height, target_width * 3, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(q_img)
         self.video_label.setPixmap(pixmap)
+        
         self.btnstate(self.b1)
         self.rect_points_to_counting = []
   
     def handle_mouse_move(self, event):
         position = event.position()
+       
         x = int(position.x())
         y = int(position.y())
 
@@ -186,10 +201,11 @@ class CarCountingApp(QMainWindow):
         # Call any function or perform any action you want with x and y  
     
     def draw_rectangle(self, event):
-       
         position = event.position()
-        x = int(position.x())
+        x = int(position.x() )
         y = int(position.y())
+        
+        print(f"x:{x}, y:{y}")
 
         self.rect_points_to_counting.append(x)
         self.rect_points_to_counting.append(y)
@@ -225,19 +241,8 @@ class CarCountingApp(QMainWindow):
         x = int(position.x())
         y = int(position.y())
 
-        frame_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        frame_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-
-        label_width = self.video_label.width()
-        label_height = self.video_label.height()
-        scale_x = frame_width / label_width
-        scale_y = frame_height / label_height
-
-        frame_x = int(x * scale_x)
-        frame_y = int(y * scale_y)
-
-        self.rect_points_to_counting.append(frame_x)
-        self.rect_points_to_counting.append(frame_y)
+        self.rect_points_to_counting.append(x)
+        self.rect_points_to_counting.append(y)
 
         self.rect_points.add_rect_point(x)
         self.rect_points.add_rect_point(y)
@@ -264,7 +269,7 @@ class CarCountingApp(QMainWindow):
 
     def reset_drawing(self):
         self.cap = None
-        self.video_handler.set_video_path("")
+        self.video_handler.set_video_path(None)
         self.rect_points.rect_points = []
         self.rect_points_to_counting = []
 
@@ -276,6 +281,7 @@ class CarCountingApp(QMainWindow):
         painter.end()
 
         self.video_label.setPixmap(pixmap)
+        self.label.setText("Please select video")
         self.b1.setEnabled(True)
         self.b2.setEnabled(True)
 
