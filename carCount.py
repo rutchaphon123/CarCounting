@@ -1,5 +1,5 @@
 import cv2
-# from ultralytics import YOLO
+from ultralytics import YOLO
 
 from datetime import timedelta
 from ultralytics import RTDETR
@@ -8,8 +8,8 @@ import tracker, csv, datetime, os
 
 
 # Load the  model
-model = YOLO("yolov8s.pt")
-# model = RTDETR('rtdetr-l.pt')
+# model = YOLO("yolov8s.pt")
+model = YOLO('best.pt')
 # model = NAS('yolo_nas_s.pt')
 class RectPointsHandler:
   def __init__(self):
@@ -34,9 +34,8 @@ class VideoHandler:
 class csvHandler:
     def __init__(self):
         self.csv_writer_path = None
-
     def export_to_csv(self, data, filename):
-        output_dir = "output/csv"
+        output_dir = "./output/csv/"
         os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
         
         current_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -69,7 +68,13 @@ def get_video_info(video_path):
   print(f"\033[1mLength:\033[0m {video_length}")
 
 
-
+def get_time_info(cap):
+  current_time = int(cap.get(cv2.CAP_PROP_POS_MSEC))
+  hours = str(int(current_time / 3600000)).zfill(2)
+  minutes = str(int(current_time / 60000)).zfill(2)
+  seconds = str(int((current_time % 60000) / 1000)).zfill(2)
+  time_info = [hours, minutes, seconds]
+  return time_info
 
 def start_car_counting(video_path, video_writer_path, rect_points, speed_estimation_btn):
   print(f"Start counting cars path at {video_path}")
@@ -86,8 +91,6 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
   
   window_width = 1280
   window_height = 720
-
-  current_time = 0
   
   video_writer = cv2.VideoWriter(video_writer_path,
               cv2.VideoWriter_fourcc(*'mp4v'),
@@ -107,28 +110,31 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
   while cap.isOpened():
     success, frame = cap.read()
     
+    (h, w) = frame.shape[:2]
+    
     if success:
-      results = model.track(frame, persist=True, conf=0.4, classes=[2, 3, 5, 7])  # Adjust confidence/iou thresholds
       
-      
+      # Resize frame based on desired output width or maintain aspect ratio
+      if window_width:
+        r = window_width / float(w)  # Use desired width for resizing
+      else:
+          # Maintain aspect ratio for resizing
+          max_dim = 1024  # Adjust as needed to limit maximum dimension
+          if max(h, w) > max_dim:
+            r = max_dim / float(max(h, w))
+          else:
+            r = 1  # No resizing needed if both dimensions are within limit
+            
+      dim = (int(w * r), int(h * r))
+      resized_frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+      results = model.track(resized_frame, persist=True, conf=0.4, classes=[0, 1, 2, 3, 5, 6, 7])  # Adjust confidence/iou thresholds
       annotated_frame = results[0].plot(labels=False)
 
-      (h, w) = annotated_frame.shape[:2]
-      r = window_width / float(w)
-      dim = (int(w * r), int(h * r))
-      resized_frame = cv2.resize(annotated_frame, dim, interpolation=cv2.INTER_AREA)
-
-      current_time = int(cap.get(cv2.CAP_PROP_POS_MSEC))
-      hours = str(int(current_time / 3600000)).zfill(2)
-      minutes = str(int(current_time / 60000)).zfill(2)
-      seconds = str(int((current_time % 60000) / 1000)).zfill(2)
+      time_info = get_time_info(cap)
+      time_text = f"{time_info[0]}:{time_info[1]}:{time_info[2]}"
+      cv2.putText(annotated_frame, time_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
       
-      time_info = [hours, minutes, seconds]
-      
-      time_text = f"{hours}:{minutes}:{seconds}"
-      cv2.putText(resized_frame, time_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-      
-      frame = counter.start_counting(resized_frame, results, time_info)
+      frame = counter.start_counting(annotated_frame, results, time_info)
       video_writer.write(frame)
 
       if cv2.waitKey(1) & 0xFF == ord("q") or cv2.getWindowProperty('Ultralytics YOLOv8 Object Counter', cv2.WND_PROP_VISIBLE) < 1:  #break when hit "q" button
