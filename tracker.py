@@ -227,8 +227,8 @@ class ObjectCounter:
                     current_position = "in" if is_inside else "out"
                     if prev_position is not None:
                         if self.counting_dict[track_id] != current_position and is_inside:
-                            # self.in_counts += 1
-                            # self.counting_dict[track_id] = "in"
+                            self.in_counts += 1
+                            self.counting_dict[track_id] = "in"
                             self.class_counts[class_name] += 1
                             self.track_timestamps[track_id] = f"{time_info[0]}:{time_info[1]}:{time_info[2]}"
                             #add speed and time to object
