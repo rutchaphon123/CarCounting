@@ -61,7 +61,7 @@ class CarCountingApp(QMainWindow):
         layout.setColumnStretch(0, 1)
         layout.setRowStretch(0, 1)        
 
-        self.video_label.setStyleSheet("border: 3px solid #3D3B40")
+        self.video_label.setStyleSheet("color: rgba(0, 0, 0, 0.6); border: 3px solid #3D3B40; ")
         layout.addWidget(self.video_label, 0, 0, 6, 1)
         self.video_label.setMaximumSize(QSize(1280, 720))
         self.video_label.setMinimumSize(QSize(1280, 720))
@@ -98,23 +98,29 @@ class CarCountingApp(QMainWindow):
         self.reset_button.clicked.connect(self.reset_drawing)
         layout.addWidget(self.reset_button, 5, 1)
         
-
+        button_style = "{ font-size: 14px; padding: 5px 10px; border-radius: 10px; border: 1px solid black}"
+        button_style_hover = "{ background-color: #CAF4FF; border: 1px solid #6AD4DD}"
+        button_style_disable = "{ background-color: rgba(163, 245, 86, 0.4); border: 1px solid rgba(0, 0, 0, 0.6)}"
+        
+        button_style_start = "{ font-size: 14px; padding: 5px 10px; background-color: #41B06E; border-radius: 10px; border: 1px solid black}"
+        button_style_start_hover = "{ background-color: #8DECB4; }"
+       
         self.label = QLabel("Please select video:")
         self.label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.label, 6, 0, 1, 2)
         
         self.select_video_button = QPushButton("Choose Video")
-        self.select_video_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
+        self.select_video_button.setStyleSheet(f"QPushButton {button_style} QPushButton:hover {button_style_hover}")
         self.select_video_button.clicked.connect(self.select_video)
         layout.addWidget(self.select_video_button, 7, 0, 1, 2)
 
         self.select_save_video_button = QPushButton("Save Video As...")
-        self.select_save_video_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
+        self.select_save_video_button.setStyleSheet(f"QPushButton {button_style} QPushButton:hover {button_style_hover}")
         self.select_save_video_button.clicked.connect(self.select_save_video)
         layout.addWidget(self.select_save_video_button, 8, 0, 1, 2)
         
         self.start_counting_button = QPushButton("Start Car Counting")
-        self.start_counting_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
+        self.start_counting_button.setStyleSheet(f"QPushButton {button_style_start} QPushButton:hover {button_style_start_hover} QPushButton:disabled {button_style_disable}")
         self.start_counting_button.clicked.connect(self.start_car_counting)
         layout.addWidget(self.start_counting_button, 9, 0, 1, 2)
 
@@ -182,12 +188,17 @@ class CarCountingApp(QMainWindow):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         target_width, target_height = 1280, 720
         frame_resized = cv2.resize(frame_rgb, (target_width, target_height))
-
+        #make capture image
         q_img = QImage(frame_resized.data, target_width, target_height, target_width * 3, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(q_img)
         self.video_label.setPixmap(pixmap)
         
-        self.btnstate(self.b1)
+        #check current state
+        if self.b1.text() == "rectangle" and self.b1.isChecked():
+            self.btnstate(self.b1)
+        else:
+            self.btnstate(self.b2)
+
         self.rect_points_to_counting = []
   
     def handle_mouse_move(self, event):
@@ -202,7 +213,7 @@ class CarCountingApp(QMainWindow):
     
     def draw_rectangle(self, event):
         position = event.position()
-        x = int(position.x() )
+        x = int(position.x())
         y = int(position.y())
         
         print(f"x:{x}, y:{y}")
@@ -282,6 +293,7 @@ class CarCountingApp(QMainWindow):
 
         self.video_label.setPixmap(pixmap)
         self.label.setText("Please select video")
+        self.start_counting_button.setEnabled(False)
         self.b1.setEnabled(True)
         self.b2.setEnabled(True)
 

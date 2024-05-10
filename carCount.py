@@ -9,7 +9,7 @@ import tracker, csv, datetime, os
 
 # Load the  model
 # model = YOLO("yolov8s.pt")
-model = YOLO('best.pt')
+model = YOLO('vehicle_detection.pt')
 # model = NAS('yolo_nas_s.pt')
 class RectPointsHandler:
   def __init__(self):
@@ -137,7 +137,7 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
       frame = counter.start_counting(annotated_frame, results, time_info)
       video_writer.write(frame)
 
-      if cv2.waitKey(1) & 0xFF == ord("q") or cv2.getWindowProperty('Ultralytics YOLOv8 Object Counter', cv2.WND_PROP_VISIBLE) < 1:  #break when hit "q" button
+      if cv2.waitKey(1) & 0xFF == ord("q") or cv2.getWindowProperty("Vehicle counting", cv2.WND_PROP_VISIBLE) < 1:  #break when hit "q" button
         break
     else:
       # Break the loop if the end of the video is reached

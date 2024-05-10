@@ -37,7 +37,7 @@ class ObjectCounter:
 
         self.names = None  # Classes names
         self.annotator = None  # Annotator
-        self.window_name = "Ultralytics YOLOv8 Object Counter"
+        self.window_name = "Vehicle counting"
         
         #All object information
         self.object_info = {}
@@ -227,8 +227,8 @@ class ObjectCounter:
                     current_position = "in" if is_inside else "out"
                     if prev_position is not None:
                         if self.counting_dict[track_id] != current_position and is_inside:
-                            self.in_counts += 1
-                            self.counting_dict[track_id] = "in"
+                            # self.in_counts += 1
+                            # self.counting_dict[track_id] = "in"
                             self.class_counts[class_name] += 1
                             self.track_timestamps[track_id] = f"{time_info[0]}:{time_info[1]}:{time_info[2]}"
                             #add speed and time to object
@@ -270,10 +270,7 @@ class ObjectCounter:
                     else:
                         self.counting_dict[track_id] = None
 
-        # Format counts for display
-        # counts_str = ", ".join([f"{class_name}: {count}" for class_name, count in self.class_counts.items()])
-        # counts_str = counts_str.rstrip()
-        # counts_str = counts_str.split("\t")
+
         count_with_class = {class_name: count for class_name, count in self.class_counts.items()}
        
         # Display counts
