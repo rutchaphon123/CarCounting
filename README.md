@@ -1,3 +1,8 @@
 # carCounting
 โปรแกรมนับรถ Free!!!
-![image](https://github.com/rutchaphon123/carCounting/assets/41964089/eec8ff12-515b-4f3b-881b-58834c4ea8c3)
+![image](https://github.com/rutchaphon123/carCounting/assets/41964089/3afffb55-72ae-4e6c-b373-70293f57f744)
+## วิธีการรันโปรแกรม
+กดที่ run.bat
+## เลือกโหมดวาดภาพ
+เลือกวาดเป็นสี่เหลี่ยม <br>
+![image](https://github.com/rutchaphon123/carCounting/assets/41964089/29bd8d20-86b7-4e2e-bc4a-f3e259cfa824)
