@@ -1,15 +1,74 @@
 import cv2
-import os, sys, time
+import os, sys
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton, QWidget, QFileDialog, 
-QMessageBox, QGridLayout, QRadioButton, QMenuBar, QMenu, QSplashScreen, QCheckBox)
+QDialog, QMessageBox, QGridLayout, QVBoxLayout, QHBoxLayout,QCheckBox ,QRadioButton, QMenuBar, QMenu, QSplashScreen)
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt, QAction, QFont, QIcon
 from PySide6.QtCore import QPoint, QSize
 from carCount import RectPointsHandler, VideoHandler, start_car_counting
 
+class VehicleSelectionWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.vehicle_types = {
+            "bicycle": 0,
+            "bus": 1,
+            "car": 2,
+            "motorcycle": 3,
+            "pedestrian": 4,
+            "tricycle": 5,
+            "truck": 6,
+            "van": 7,
+        }
+        self.default_selected_vehicles = [1, 2, 3, 4]  # Default selections
+
+        # No need to load from storage, use default selections
+        self.selected_vehicles = self.default_selected_vehicles.copy()
+
+        self.checkboxes = {}
+        self.create_checkboxes()
+
+        self.ok_button = QPushButton("OK")
+        self.ok_button.clicked.connect(self.get_selected_vehicles)
+
+        # Set a fixed size for the window (adjust width and height as needed)
+        self.setFixedSize(300, 300)
+
+        layout = QVBoxLayout(self)
+        for checkbox in self.checkboxes.values():
+            layout.addWidget(checkbox)
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.ok_button)
+        layout.addLayout(button_layout)
+
+        self.setWindowTitle("Vehicle Selection")
+
+    def create_checkboxes(self):
+        for vehicle_name, vehicle_id in self.vehicle_types.items():
+            checkbox = QCheckBox(vehicle_name)
+            # Set checkbox state based on current selected_vehicles
+            checkbox.setChecked(vehicle_id in self.selected_vehicles)
+            checkbox.toggled.connect(lambda state, name=vehicle_name: self.update_selection(state, name))
+            self.checkboxes[vehicle_name] = checkbox
+
+    def update_selection(self, state, vehicle_name):
+        vehicle_id = self.vehicle_types[vehicle_name]
+        if state:
+            if vehicle_id not in self.selected_vehicles:
+                self.selected_vehicles.append(vehicle_id)
+        else:
+            self.selected_vehicles.remove(vehicle_id)
+
+    def get_selected_vehicles(self):
+        print(f"Selected vehicles: {self.selected_vehicles}")
+        self.accept()  # Close the window
+        
+        
 class CarCountingApp(QMainWindow):
     def __init__(self):
         super().__init__()
+
        
         self.setWindowTitle("Car Counting")
         self.resize(1280, 720)
@@ -69,12 +128,9 @@ class CarCountingApp(QMainWindow):
         self.select_mode = QLabel("")
         self.select_mode.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.select_mode, 0, 1)
-        # self.select_mode.setStyleSheet("background-color: #50C4ED")
         self.select_mode.setMaximumWidth(300)
-        self.select_mode.setMaximumHeight(460)
+        self.select_mode.setMaximumHeight(390)
         
-        
-   
 
         self.select_mode = QLabel("Select mode rectangle/line and speed")
         self.select_mode.setAlignment(Qt.AlignCenter)
@@ -92,11 +148,16 @@ class CarCountingApp(QMainWindow):
         self.b2 = QRadioButton("line")
         self.b2.toggled.connect(lambda: self.btnstate(self.b2))
         layout.addWidget(self.b2, 4, 1)
+        
+        self.select_class_button = QPushButton("Select class")
+        self.select_class_button.clicked.connect(self.show_vehicle_selection_window)
+        layout.addWidget(self.select_class_button, 5, 1)
+
 
         self.reset_button = QPushButton("Reset")
         self.reset_button.setStyleSheet("QPushButton { font-size: 14px; padding: 5px 10px; }")
         self.reset_button.clicked.connect(self.reset_drawing)
-        layout.addWidget(self.reset_button, 5, 1)
+        layout.addWidget(self.reset_button, 6, 1)
         
         button_style = "{ font-size: 14px; padding: 5px 10px; border-radius: 10px; border: 1px solid black}"
         button_style_hover = "{ background-color: #CAF4FF; border: 1px solid #6AD4DD}"
@@ -107,22 +168,22 @@ class CarCountingApp(QMainWindow):
        
         self.label = QLabel("Please select video:")
         self.label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.label, 6, 0, 1, 2)
+        layout.addWidget(self.label, 7, 0, 1, 2)
         
         self.select_video_button = QPushButton("Choose Video")
         self.select_video_button.setStyleSheet(f"QPushButton {button_style} QPushButton:hover {button_style_hover}")
         self.select_video_button.clicked.connect(self.select_video)
-        layout.addWidget(self.select_video_button, 7, 0, 1, 2)
+        layout.addWidget(self.select_video_button, 8, 0, 1, 2)
 
         self.select_save_video_button = QPushButton("Save Video As...")
         self.select_save_video_button.setStyleSheet(f"QPushButton {button_style} QPushButton:hover {button_style_hover}")
         self.select_save_video_button.clicked.connect(self.select_save_video)
-        layout.addWidget(self.select_save_video_button, 8, 0, 1, 2)
+        layout.addWidget(self.select_save_video_button, 9, 0, 1, 2)
         
         self.start_counting_button = QPushButton("Start Car Counting")
         self.start_counting_button.setStyleSheet(f"QPushButton {button_style_start} QPushButton:hover {button_style_start_hover} QPushButton:disabled {button_style_disable}")
         self.start_counting_button.clicked.connect(self.start_car_counting)
-        layout.addWidget(self.start_counting_button, 9, 0, 1, 2)
+        layout.addWidget(self.start_counting_button, 10, 0, 1, 2)
 
         self.start_counting_button.setEnabled(False)
         self.reset_button.setEnabled(False)
@@ -140,6 +201,10 @@ class CarCountingApp(QMainWindow):
             self.speed_estimation = True    
         else:
             self.speed_estimation = False
+            
+    def show_vehicle_selection_window(self):
+        vehicle_window = VehicleSelectionWindow(self)
+        vehicle_window.exec()
             
 
     def select_video(self):
