@@ -7,6 +7,9 @@ from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, Qt, QAction, QFont, Q
 from PySide6.QtCore import QPoint, QSize
 from carCount import RectPointsHandler, VideoHandler, start_car_counting
 
+default_selected_vehicles = [1, 2, 3, 4]  # Default selections
+selected_vehicles = default_selected_vehicles.copy()
+
 class VehicleSelectionWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -21,11 +24,6 @@ class VehicleSelectionWindow(QDialog):
             "truck": 6,
             "van": 7,
         }
-        self.default_selected_vehicles = [1, 2, 3, 4]  # Default selections
-
-        # No need to load from storage, use default selections
-        self.selected_vehicles = self.default_selected_vehicles.copy()
-
         self.checkboxes = {}
         self.create_checkboxes()
 
@@ -41,28 +39,30 @@ class VehicleSelectionWindow(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.ok_button)
         layout.addLayout(button_layout)
-
+        
         self.setWindowTitle("Vehicle Selection")
+        print(selected_vehicles)
 
     def create_checkboxes(self):
         for vehicle_name, vehicle_id in self.vehicle_types.items():
             checkbox = QCheckBox(vehicle_name)
             # Set checkbox state based on current selected_vehicles
-            checkbox.setChecked(vehicle_id in self.selected_vehicles)
+            checkbox.setChecked(vehicle_id in selected_vehicles)
             checkbox.toggled.connect(lambda state, name=vehicle_name: self.update_selection(state, name))
             self.checkboxes[vehicle_name] = checkbox
 
     def update_selection(self, state, vehicle_name):
         vehicle_id = self.vehicle_types[vehicle_name]
         if state:
-            if vehicle_id not in self.selected_vehicles:
-                self.selected_vehicles.append(vehicle_id)
+            if vehicle_id not in selected_vehicles:
+                selected_vehicles.append(vehicle_id)
         else:
-            self.selected_vehicles.remove(vehicle_id)
+            selected_vehicles.remove(vehicle_id)
 
     def get_selected_vehicles(self):
-        print(f"Selected vehicles: {self.selected_vehicles}")
-        self.accept()  # Close the window
+        print(f"Selected vehicles: {selected_vehicles}")
+        self.accept()
+
         
         
 class CarCountingApp(QMainWindow):
@@ -121,7 +121,7 @@ class CarCountingApp(QMainWindow):
         layout.setRowStretch(0, 1)        
 
         self.video_label.setStyleSheet("color: rgba(0, 0, 0, 0.6); border: 3px solid #3D3B40; ")
-        layout.addWidget(self.video_label, 0, 0, 6, 1)
+        layout.addWidget(self.video_label, 0, 0, 7, 1)
         self.video_label.setMaximumSize(QSize(1280, 720))
         self.video_label.setMinimumSize(QSize(1280, 720))
         
@@ -373,7 +373,11 @@ class CarCountingApp(QMainWindow):
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"output_{timestamp}.avi"
                 self.video_handler.video_writer_path = os.path.join(default_dir, filename)
-            start_car_counting(self.video_handler.video_path, self.video_handler.video_writer_path, self.rect_points_to_counting, self.speed_estimation)
+            start_car_counting(self.video_handler.video_path,
+                               self.video_handler.video_writer_path,
+                               self.rect_points_to_counting,
+                               self.speed_estimation,
+                               selected_vehicles)
         else:
             self.show_message_box("Video not select", "Please select a video first.")
 
@@ -389,7 +393,7 @@ if __name__ == "__main__":
   # Create and display the splash screen (moved before CarCountingApp)
   splash_pix = QPixmap('./img/splashscreen.JPG')
   splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-  splash.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+  splash.setWindowFlags(Qt.WindowStaysOnTopHint)
   splash.setEnabled(False)
   splash.show()
   splash.showMessage("Loaded modules")

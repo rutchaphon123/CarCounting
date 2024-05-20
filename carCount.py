@@ -8,9 +8,8 @@ import tracker, csv, datetime, os
 
 
 # Load the  model
-# model = YOLO("yolov8s.pt")
 model = YOLO('vehicle_detection.pt')
-# model = NAS('yolo_nas_s.pt')
+
 class RectPointsHandler:
   def __init__(self):
     self.rect_points = []
@@ -29,7 +28,6 @@ class VideoHandler:
   def save_video_path(self, video_writer_path):
     self.video_writer_path = video_writer_path
     print(f"Video path save video at {video_writer_path} .")
-
 
 class csvHandler:
     def __init__(self):
@@ -76,7 +74,7 @@ def get_time_info(cap):
   time_info = [hours, minutes, seconds]
   return time_info
 
-def start_car_counting(video_path, video_writer_path, rect_points, speed_estimation_btn):
+def start_car_counting(video_path, video_writer_path, rect_points, speed_estimation_btn, selected_vehicles):
   print(f"Start counting cars path at {video_path}")
   while not video_path:
     pass
@@ -127,7 +125,7 @@ def start_car_counting(video_path, video_writer_path, rect_points, speed_estimat
             
       dim = (int(w * r), int(h * r))
       resized_frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
-      results = model.track(resized_frame, persist=True, conf=0.4, classes=[0, 1, 2, 3, 5, 6, 7])  # Adjust confidence/iou thresholds
+      results = model.track(resized_frame, persist=True, conf=0.5, classes= selected_vehicles)  # Adjust confidence/iou thresholds
       annotated_frame = results[0].plot(labels=False)
 
       time_info = get_time_info(cap)
