@@ -7,7 +7,7 @@ rem แสดงตำแหน่งปัจจุบันหลังเป�
 echo Current directory after change: %CD%
 
 rem เรียกใช้ active.bat เพื่อ activate Python environment
-cmd /c "%CD%\env\Scripts\activate.bat"
+call ./env/Scripts/activate.bat"
 
 rem รอ 1 วินาทีหลังจาก activate environment
 timeout /t 1
@@ -19,5 +19,5 @@ set exitcode=%errorlevel%
 
 rem Deactivate Python environment (if script exited with error)
 if %exitcode% neq 0 (
-  cmd /c "%CD%\env\Scripts\deactivate.bat"
+  call ./env/Scripts/deactivate.bat"
 )
