@@ -6,3 +6,6 @@
 ## เลือกโหมดวาดภาพ
 เลือกวาดเป็นสี่เหลี่ยม <br>
 ![image](https://github.com/rutchaphon123/carCounting/assets/41964089/29bd8d20-86b7-4e2e-bc4a-f3e259cfa824)
+
+## วิดีโอสอนการใช้งาน
+https://youtu.be/r3Z43-ywZok
