@@ -22,6 +22,9 @@ rem ติดตั้ง dependencies จาก requirement.txt
 echo Installing requirement...
 pip install -r requirement.txt
 
+rem แสดงข้อความ Loading...
+echo Loading...
+
 rem รัน Python script
 python main.py
 
